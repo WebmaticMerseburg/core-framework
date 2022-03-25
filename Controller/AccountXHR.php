@@ -7,15 +7,16 @@ use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\HttpFoundation\Response;
 use Webkul\UVDesk\CoreFrameworkBundle\Entity\SavedFilters;
 use Symfony\Component\EventDispatcher\GenericEvent;
-use Symfony\Bundle\FrameworkBundle\Controller\Controller;
+use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
 use Webkul\UVDesk\CoreFrameworkBundle\Workflow\Events as CoreWorkflowEvents;
 use Symfony\Component\Security\Core\Encoder\UserPasswordEncoderInterface;
 use Symfony\Component\EventDispatcher\EventDispatcherInterface;
 use Webkul\UVDesk\CoreFrameworkBundle\Services\UserService;
-use Symfony\Component\Translation\TranslatorInterface;
+use Symfony\Contracts\Translation\TranslatorInterface;
 use Symfony\Component\Filesystem\Filesystem as Fileservice;
+use Symfony\Component\DependencyInjection\ContainerInterface;
 
-class AccountXHR extends Controller
+class AccountXHR extends AbstractController
 {
     private $eventDispatcher;
     private $translator;
@@ -28,7 +29,7 @@ class AccountXHR extends Controller
         $this->userService = $userService;
     }
 
-    public function listAgentsXHR(Request $request)
+    public function listAgentsXHR(Request $request, ContainerInterface $container)
     {
         if (!$this->userService->isAccessAuthorized('ROLE_AGENT_MANAGE_AGENT')) {
             return $this->redirect($this->generateUrl('helpdesk_member_dashboard'));
@@ -36,7 +37,7 @@ class AccountXHR extends Controller
 
         if (true === $request->isXmlHttpRequest()) {
             $userRepository = $this->getDoctrine()->getRepository('UVDeskCoreFrameworkBundle:User');
-            $agentCollection = $userRepository->getAllAgents($request->query, $this->container);
+            $agentCollection = $userRepository->getAllAgents($request->query, $container);
             return new Response(json_encode($agentCollection), 200, ['Content-Type' => 'application/json']);
         }
         return new Response(json_encode([]), 404);
@@ -66,7 +67,7 @@ class AccountXHR extends Controller
                         'entity' => $user,
                     ]);
 
-                    $this->eventDispatcher->dispatch('uvdesk.automation.workflow.execute', $event);
+                    $this->eventDispatcher->dispatch($event, 'uvdesk.automation.workflow.execute');
 
                     // Removing profile image from physical path
                     $fileService = new Fileservice;

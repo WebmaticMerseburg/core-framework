@@ -5,14 +5,15 @@ namespace Webkul\UVDesk\CoreFrameworkBundle\Controller;
 use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\HttpFoundation\Response;
 use Symfony\Component\HttpFoundation\RedirectResponse;
-use Symfony\Bundle\FrameworkBundle\Controller\Controller;
+use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
 use Symfony\Component\Security\Core\Exception\AccessDeniedException;
 use Webkul\UVDesk\CoreFrameworkBundle\SwiftMailer\Event\ConfigurationUpdatedEvent;
 use Webkul\UVDesk\CoreFrameworkBundle\Services\UserService;
-use Symfony\Component\Translation\TranslatorInterface;
+use Symfony\Contracts\Translation\TranslatorInterface;
 use Webkul\UVDesk\CoreFrameworkBundle\SwiftMailer\SwiftMailer as SwiftMailerService;
+use Symfony\Component\DependencyInjection\ContainerInterface;
 
-class SwiftMailer extends Controller
+class SwiftMailer extends AbstractController
 {
     private $userService;
     private $translator;
@@ -62,7 +63,7 @@ class SwiftMailer extends Controller
         return $this->render('@UVDeskCoreFramework//SwiftMailer//manageConfigurations.html.twig');
     }
 
-    public function updateMailerConfiguration($id, Request $request)
+    public function updateMailerConfiguration($id, Request $request, ContainerInterface $container)
     {
         $swiftmailerService = $this->swiftMailer;;
         $swiftmailerConfigurations = $swiftmailerService->parseSwiftMailerConfigurations();
@@ -88,7 +89,7 @@ class SwiftMailer extends Controller
             // Dispatch swiftmailer configuration updated event
             $event = new ConfigurationUpdatedEvent($swiftmailerConfiguration, $existingSwiftmailerConfiguration);
             
-            $this->get('uvdesk.core.event_dispatcher')->dispatch($event,ConfigurationUpdatedEvent::NAME);
+            $container->get('uvdesk.core.event_dispatcher')->dispatch($event, ConfigurationUpdatedEvent::NAME);
 
             // Updated swiftmailer configuration file
             $swiftmailerConfigurations[$index] = $swiftmailerConfiguration;            

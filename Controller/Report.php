@@ -10,16 +10,17 @@ use Symfony\Component\HttpFoundation\Response;
 use Webkul\UVDesk\CoreFrameworkBundle\Entity\SupportGroup;
 use Webkul\UVDesk\CoreFrameworkBundle\Entity\SupportTeam;
 use Webkul\UVDesk\CoreFrameworkBundle\Entity\UserInstance;
-use Symfony\Bundle\FrameworkBundle\Controller\Controller;
+use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
 use Webkul\UVDesk\CoreFrameworkBundle\Services\UserService;
 use Webkul\UVDesk\CoreFrameworkBundle\Services\UVDeskService;
 use Webkul\UVDesk\CoreFrameworkBundle\Services\ReportService;
-use Symfony\Component\Translation\TranslatorInterface;
+use Symfony\Contracts\Translation\TranslatorInterface;
 use Knp\Component\Pager\PaginatorInterface;
 use Doctrine\ORM\Query;
 use Symfony\Component\Routing\Generator\UrlGeneratorInterface;
+use Symfony\Component\DependencyInjection\ContainerInterface;
 
-class Report extends Controller
+class Report extends AbstractController
 {
     private $userService;
     private $reportService;
@@ -154,37 +155,36 @@ class Report extends Controller
         );
     }
 
-    public function getAchievementsXhr(Request $request)
+    public function getAchievementsXhr(Request $request, ContainerInterface $container)
     {
         $json = array();
 
         if( $request->isXmlHttpRequest()) {
             $repository = $this->getDoctrine()->getRepository('UVDeskCoreFrameworkBundle:TicketRating');
-            $json =  $repository->getRatedTicketList($request->query, $this->container);
+            $json =  $repository->getRatedTicketList($request->query, $container);
 
-            $json['data'] = $this->getAchievementsData($request);
+            $json['data'] = $this->getAchievementsData($request, $container);
         }
         $response = new Response(json_encode($json));
         $response->headers->set('Content-Type', 'application/json');
         return $response;
     }
 
-    public function getAchievementsData($request)
+    public function getAchievementsData($request, $container)
     {
         $data = array();
-        $reportService = $this->get('report.service');
+        $reportService = $this->reportService;
         $reportService->parameters = $request->query->all();
         $startDate = $reportService->parameters['start'];
         $endDate = $reportService->parameters['end'];
 
-        $userService = $this->get('user.service');
         $reportService->startDate = $this->userService->convertToTimezone(new \DateTime($startDate),'Y-m-d H:i:s');
         $reportService->endDate = $this->userService->convertToTimezone(new \DateTime($endDate),'Y-m-d H:i:s');
 
         $repository = $this->getDoctrine()->getRepository('UVDeskCoreFrameworkBundle:TicketRating');
-        $data =  $repository->getRatingData($request->query, $this->container);
+        $data =  $repository->getRatingData($request->query, $container);
         for ($i = 1; $i <= 5; $i++) {
-            $data['ratings'][$i] = $repository->getRatingByStarCount($request->query, $i, $this->container);
+            $data['ratings'][$i] = $repository->getRatingByStarCount($request->query, $i, $container);
         }
 
         return $data;

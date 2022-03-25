@@ -3,7 +3,7 @@
 namespace Webkul\UVDesk\CoreFrameworkBundle\Controller;
 
 use Doctrine\Common\Collections\Criteria;
-use Symfony\Bundle\FrameworkBundle\Controller\Controller;
+use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
 use Symfony\Bundle\FrameworkBundle\Routing\Router;
 use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\HttpFoundation\Response;
@@ -11,10 +11,11 @@ use Symfony\Component\Security\Core\Exception\AccessDeniedException;
 use Webkul\UVDesk\CoreFrameworkBundle\Entity;
 use Webkul\UVDesk\CoreFrameworkBundle\Entity\UserInstance;
 use Webkul\UVDesk\CoreFrameworkBundle\Services\UserService;
-use Symfony\Component\Translation\TranslatorInterface;
+use Symfony\Contracts\Translation\TranslatorInterface;
+use Symfony\Component\DependencyInjection\ContainerInterface;
 
 
-class Email extends Controller
+class Email extends AbstractController
 {
     const LIMIT = 10;
     
@@ -104,7 +105,7 @@ class Email extends Controller
         ));
     }
 
-    public function templatesxhr(Request $request)
+    public function templatesxhr(Request $request, ContainerInterface $container)
     {
         if (!$this->userService->isAccessAuthorized('ROLE_AGENT_MANAGE_EMAIL_TEMPLATE')) {
             return $this->redirect($this->generateUrl('helpdesk_member_dashboard'));
@@ -112,23 +113,23 @@ class Email extends Controller
 
         $json = array();
         $error = false;
-        if($request->isXmlHttpRequest()) {
-            if($request->getMethod() == 'GET') {
+        if ($request->isXmlHttpRequest()) {
+            if ($request->getMethod() == 'GET') {
                 $repository = $this->getDoctrine()->getRepository('UVDeskCoreFrameworkBundle:EmailTemplates');
-                $json =  $repository->getEmailTemplates($request->query, $this->container);
-            }else{
-                if($request->attributes->get('template')){
-                    if($templateBase = $this->getTemplate($request)) {
-                        if($request->getMethod() == 'DELETE' ){
+                $json =  $repository->getEmailTemplates($request->query, $container);
+            } else {
+                if ($request->attributes->get('template')){
+                    if ($templateBase = $this->getTemplate($request)) {
+                        if ($request->getMethod() == 'DELETE' ) {
                             $em = $this->getDoctrine()->getManager();
                             $em->remove($templateBase);
                             $em->flush();
 
                             $json['alertClass'] = 'success';
                             $json['alertMessage'] = 'Success! Template has been deleted successfully.';
-                        }else
+                        } else
                             $error = true;
-                    } else{
+                    } else {
                         $json['alertClass'] = 'danger';
                         $json['alertMessage'] = $this->translator->trans('Warning! resource not found.');
                         $json['statusCode'] = Response::HTTP_NO_FOUND;
@@ -137,7 +138,7 @@ class Email extends Controller
             }
         }
 
-        if($error) {
+        if ($error) {
             $json['alertClass'] = 'danger';
             $json['alertMessage'] = $this->translator->trans('Warning! You can not remove predefined email template which is being used in workflow(s).');
         }

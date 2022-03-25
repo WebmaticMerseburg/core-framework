@@ -5,12 +5,13 @@ namespace Webkul\UVDesk\CoreFrameworkBundle\Controller;
 use Webkul\UVDesk\CoreFrameworkBundle\Entity\User;
 use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\HttpFoundation\Response;
-use Symfony\Bundle\FrameworkBundle\Controller\Controller;
+use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
 use Symfony\Component\Security\Core\Encoder\UserPasswordEncoderInterface;
 use Webkul\UVDesk\CoreFrameworkBundle\Services\UserService;
-use Symfony\Component\Translation\TranslatorInterface;
+use Symfony\Contracts\Translation\TranslatorInterface;
+use Symfony\Component\DependencyInjection\ContainerInterface;
 
-class TeamXHR extends Controller
+class TeamXHR extends AbstractController
 {
     private $userService;
     private $translator;
@@ -21,14 +22,14 @@ class TeamXHR extends Controller
         $this->translator = $translator;
     }
 
-    public function listTeamsXHR(Request $request)
+    public function listTeamsXHR(Request $request, ContainerInterface $container)
     {
         if (!$this->userService->isAccessAuthorized('ROLE_AGENT_MANAGE_SUB_GROUP')){
             return $this->redirect($this->generateUrl('helpdesk_member_dashboard'));
         }
 
         if (true === $request->isXmlHttpRequest()) {
-            $paginationResponse = $this->getDoctrine()->getRepository('UVDeskCoreFrameworkBundle:SupportTeam')->getAllSupportTeams($request->query, $this->container);
+            $paginationResponse = $this->getDoctrine()->getRepository('UVDeskCoreFrameworkBundle:SupportTeam')->getAllSupportTeams($request->query, $container);
 
             return new Response(json_encode($paginationResponse), 200, ['Content-Type' => 'application/json']);
         }

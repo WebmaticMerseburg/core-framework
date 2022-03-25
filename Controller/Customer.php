@@ -13,7 +13,7 @@ use Webkul\UVDesk\CoreFrameworkBundle\Services\UserService;
 use Webkul\UVDesk\CoreFrameworkBundle\FileSystem\FileSystem;
 use Symfony\Component\Security\Http\Authentication\AuthenticationUtils;
 use Symfony\Component\Security\Core\Encoder\UserPasswordEncoderInterface;
-use Symfony\Component\Translation\TranslatorInterface;
+use Symfony\Contracts\Translation\TranslatorInterface;
 use Symfony\Component\Filesystem\Filesystem as Fileservice;
 
 class Customer extends AbstractController
@@ -182,7 +182,7 @@ class Customer extends AbstractController
                         'entity' => $user,
                     ]);
 
-                    $this->eventDispatcher->dispatch('uvdesk.automation.workflow.execute', $event);
+                    $this->eventDispatcher->dispatch($event, 'uvdesk.automation.workflow.execute');
 
                     $this->addFlash('success', $this->translator->trans('Success ! Customer information updated successfully.'));
                     return $this->redirect($this->generateUrl('helpdesk_member_manage_customer_account_collection'));

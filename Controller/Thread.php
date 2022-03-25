@@ -8,19 +8,19 @@ use Symfony\Component\EventDispatcher\GenericEvent;
 use Webkul\UVDesk\CoreFrameworkBundle\Entity\Ticket;
 use Symfony\Component\EventDispatcher\EventDispatcherInterface;
 use Webkul\UVDesk\CoreFrameworkBundle\Entity\Attachment;
-use Symfony\Bundle\FrameworkBundle\Controller\Controller;
+use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
 use Webkul\UVDesk\CoreFrameworkBundle\Entity\TicketStatus;
 use Webkul\UVDesk\CoreFrameworkBundle\Entity\Thread as TicketThread;
 use Webkul\UVDesk\CoreFrameworkBundle\Workflow\Events as CoreWorkflowEvents;
 use Webkul\UVDesk\CoreFrameworkBundle\Services\UserService;
-use Symfony\Component\Translation\TranslatorInterface;
+use Symfony\Contracts\Translation\TranslatorInterface;
 use Webkul\UVDesk\CoreFrameworkBundle\Services\UVDeskService;
 use Webkul\UVDesk\CoreFrameworkBundle\Services\TicketService;
 use Webkul\UVDesk\CoreFrameworkBundle\Services\EmailService;
 use Symfony\Component\HttpKernel\KernelInterface;
 use Webkul\UVDesk\CoreFrameworkBundle\Services\FileUploadService;
 
-class Thread extends Controller
+class Thread extends AbstractController
 {
     private $userService;
     private $translator;
@@ -130,7 +130,7 @@ class Thread extends Controller
                     'thread' =>  $thread
                 ]);
 
-                $this->eventDispatcher->dispatch('uvdesk.automation.workflow.execute', $event);
+                $this->eventDispatcher->dispatch($event, 'uvdesk.automation.workflow.execute');
 
                 // @TODO: Render response on the basis of event response (if propogation was stopped or not)
                 $this->addFlash('success', $this->translator->trans('Note added to ticket successfully.'));
@@ -141,10 +141,10 @@ class Thread extends Controller
                     'thread' =>  $thread
                 ]);
 
-                $this->eventDispatcher->dispatch('uvdesk.automation.workflow.execute', $event);
+                $this->eventDispatcher->dispatch($event, 'uvdesk.automation.workflow.execute');
 
                 // @TODO: Render response on the basis of event response (if propogation was stopped or not)
-                $this->addFlash('success', $this->get('translator')->trans('Success ! Reply added successfully.'));
+                $this->addFlash('success', $this->translator->trans('Success ! Reply added successfully.'));
                 break;
             case 'forward':
                 // Prepare headers
@@ -238,7 +238,7 @@ class Thread extends Controller
                     'entity' =>  $ticket,
                 ]);
 
-                $this->eventDispatcher->dispatch('uvdesk.automation.workflow.execute', $event);
+                $this->eventDispatcher->dispatch($event, 'uvdesk.automation.workflow.execute');
 
                 $json['alertMessage'] = $this->translator->trans('Success ! Thread updated successfully.');
                 $json['alertClass'] = 'success';

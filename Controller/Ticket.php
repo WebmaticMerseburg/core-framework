@@ -6,7 +6,7 @@ use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\HttpFoundation\Response;
 use Symfony\Component\EventDispatcher\GenericEvent;
 use Webkul\UVDesk\CoreFrameworkBundle\Form as CoreFrameworkBundleForms;
-use Symfony\Bundle\FrameworkBundle\Controller\Controller;
+use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
 use Webkul\UVDesk\CoreFrameworkBundle\Entity as CoreFrameworkBundleEntities;
 use Symfony\Component\Routing\Generator\UrlGeneratorInterface;
 use Webkul\UVDesk\CoreFrameworkBundle\DataProxies as CoreFrameworkBundleDataProxies;
@@ -15,15 +15,16 @@ use Webkul\UVDesk\CoreFrameworkBundle\Tickets\QuickActionButtonCollection;
 use Webkul\UVDesk\CoreFrameworkBundle\Services\CustomFieldsService;
 use Webkul\UVDesk\CoreFrameworkBundle\Repository\TicketRepository;
 use Webkul\UVDesk\CoreFrameworkBundle\Services\UserService;
-use Symfony\Component\Translation\TranslatorInterface;
+use Symfony\Contracts\Translation\TranslatorInterface;
 use Webkul\UVDesk\CoreFrameworkBundle\Services\UVDeskService;
 use Webkul\UVDesk\CoreFrameworkBundle\Services\TicketService;
 use Webkul\UVDesk\CoreFrameworkBundle\Services\EmailService;
 use Symfony\Component\EventDispatcher\EventDispatcherInterface;
 use Symfony\Component\HttpKernel\KernelInterface;
 use Symfony\Component\HttpKernel\Exception\NotFoundHttpException;
+use Symfony\Component\DependencyInjection\ContainerInterface;
 
-class Ticket extends Controller
+class Ticket extends AbstractController
 {
     private $userService;
     private $translator;
@@ -55,7 +56,7 @@ class Ticket extends Controller
         ]);
     }
 
-    public function loadTicket($ticketId, QuickActionButtonCollection $quickActionButtonCollection)
+    public function loadTicket($ticketId, QuickActionButtonCollection $quickActionButtonCollection, ContainerInterface $container)
     {
         $entityManager = $this->getDoctrine()->getManager();
         $userRepository = $entityManager->getRepository('UVDeskCoreFrameworkBundle:User');
@@ -145,7 +146,7 @@ class Ticket extends Controller
         return $this->render('@UVDeskCoreFramework//ticket.html.twig', [
             'ticket' => $ticket,
             'totalReplies' => $ticketRepository->countTicketTotalThreads($ticket->getId()),
-            'totalCustomerTickets' => ($ticketRepository->countCustomerTotalTickets($customer, $this->container) - 1),
+            'totalCustomerTickets' => ($ticketRepository->countCustomerTotalTickets($customer, $container) - 1),
             'initialThread' => $this->ticketService->getTicketInitialThreadDetails($ticket),
             'ticketAgent' => !empty($agent) ? $agent->getAgentInstance()->getPartialDetails() : null,
             'customer' => $customer->getCustomerInstance()->getPartialDetails(),
@@ -155,7 +156,7 @@ class Ticket extends Controller
             'ticketStatusCollection' => $entityManager->getRepository('UVDeskCoreFrameworkBundle:TicketStatus')->findAll(),
             'ticketTypeCollection' => $entityManager->getRepository('UVDeskCoreFrameworkBundle:TicketType')->findByIsActive(true),
             'ticketPriorityCollection' => $entityManager->getRepository('UVDeskCoreFrameworkBundle:TicketPriority')->findAll(),
-            'ticketNavigationIteration' => $ticketRepository->getTicketNavigationIteration($ticket, $this->container),
+            'ticketNavigationIteration' => $ticketRepository->getTicketNavigationIteration($ticket, $container),
             'ticketLabelCollection' => $ticketRepository->getTicketLabelCollection($ticket, $user),
         ]);
     }
@@ -257,7 +258,7 @@ class Ticket extends Controller
                 'entity' =>  $thread->getTicket(),
             ]);
 
-            $this->eventDispatcher->dispatch('uvdesk.automation.workflow.execute', $event);
+            $this->eventDispatcher->dispatch($event, 'uvdesk.automation.workflow.execute', );
         } catch (\Exception $e) {
             // Skip Automation
         }
@@ -265,7 +266,7 @@ class Ticket extends Controller
         if (!empty($thread)) {
             $ticket = $thread->getTicket();
             if($request->request->get('customFields') || $request->files->get('customFields')) {
-                $this->get('ticket.service')->addTicketCustomFields($thread, $request->request->get('customFields'), $request->files->get('customFields'));                        
+                $this->ticketService->addTicketCustomFields($thread, $request->request->get('customFields'), $request->files->get('customFields'));                        
             }
             $this->addFlash('success', $this->translator->trans('Success ! Ticket has been created successfully.'));
 
@@ -342,7 +343,7 @@ class Ticket extends Controller
             return $this->redirect($this->generateUrl('helpdesk_member_dashboard'));
         }
 
-        $enabled_bundles = $this->container->getParameter('kernel.bundles');
+        $enabled_bundles = $this->getParameter('kernel.bundles');
 
         return $this->render('@UVDeskCoreFramework/supportTagList.html.twig', [
             'articlesEnabled' => in_array('UVDeskSupportCenterBundle', array_keys($enabled_bundles)),
@@ -400,7 +401,7 @@ class Ticket extends Controller
             'entity' => $ticket,
         ]);
 
-        $this->eventDispatcher->dispatch('uvdesk.automation.workflow.execute', $event);
+        $this->eventDispatcher->dispatch($event, 'uvdesk.automation.workflow.execute');
         $this->addFlash('success', $this->translator->trans('Success ! Ticket moved to trash successfully.'));
 
         return $this->redirectToRoute('helpdesk_member_ticket_collection');
@@ -426,7 +427,7 @@ class Ticket extends Controller
         $entityManager->remove($ticket);
         $entityManager->flush();
 
-        $this->addFlash('success', $this->get('translator')->trans('Success ! Success ! Ticket Id #'. $ticketId .' has been deleted successfully.'));
+        $this->addFlash('success', $this->translator->trans('Success ! Success ! Ticket Id #'. $ticketId .' has been deleted successfully.'));
 
         return $this->redirectToRoute('helpdesk_member_ticket_collection');
     }

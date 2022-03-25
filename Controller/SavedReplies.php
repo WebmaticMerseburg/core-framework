@@ -4,14 +4,15 @@ namespace Webkul\UVDesk\CoreFrameworkBundle\Controller;
 
 use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\HttpFoundation\Response;
-use Symfony\Bundle\FrameworkBundle\Controller\Controller;
+use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
 use Symfony\Component\Routing\Generator\UrlGeneratorInterface;
 use Webkul\UVDesk\CoreFrameworkBundle\Form as CoreFrameworkBundleForms;
 use Webkul\UVDesk\CoreFrameworkBundle\Entity as CoreFrameworkBundleEntities;
 use Webkul\UVDesk\CoreFrameworkBundle\Services\UserService;
-use Symfony\Component\Translation\TranslatorInterface;
+use Symfony\Contracts\Translation\TranslatorInterface;
+use Symfony\Component\DependencyInjection\ContainerInterface;
 
-class SavedReplies extends Controller
+class SavedReplies extends AbstractController
 {
     const LIMIT = 10;
     const ROLE_REQUIRED = 'saved_replies';
@@ -34,7 +35,7 @@ class SavedReplies extends Controller
         ]);
     }
 
-    public function updateSavedReplies(Request $request)
+    public function updateSavedReplies(Request $request, ContainerInterface $container)
     {
         $templateId = $request->attributes->get('template');
         $repository = $this->getDoctrine()->getRepository(CoreFrameworkBundleEntities\SavedReplies::class);
@@ -43,7 +44,7 @@ class SavedReplies extends Controller
             $template = new CoreFrameworkBundleEntities\SavedReplies();
         } else {
             // @TODO: Refactor: We shouldn't be passing around the container.
-            $template = $repository->getSavedReply($templateId, $this->container);
+            $template = $repository->getSavedReply($templateId, $container);
 
             if (empty($template)) {
                 $this->noResultFound();
@@ -135,7 +136,7 @@ class SavedReplies extends Controller
         ));
     }
 
-    public function savedRepliesXHR(Request $request)
+    public function savedRepliesXHR(Request $request, ContainerInterface $container)
     {
         if (!$request->isXmlHttpRequest()) {
             throw new \Exception(404);
@@ -145,7 +146,7 @@ class SavedReplies extends Controller
         $savedReplyRepository = $entityManager->getRepository('UVDeskCoreFrameworkBundle:SavedReplies');
 
         if ($request->getMethod() == 'GET') {
-            $responseContent = $savedReplyRepository->getSavedReplies($request->query, $this->container);
+            $responseContent = $savedReplyRepository->getSavedReplies($request->query, $container);
         } else {
             $savedReplyId = $request->attributes->get('template');
 
