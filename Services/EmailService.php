@@ -492,16 +492,18 @@ final class EmailService
                 $parsedAddresses = [];
                 foreach ($addresses as $a) {
                     foreach(mailparse_rfc822_parse_addresses($a) as $p) {
-                        $parsedAddresses[] = [$p['address'] => $p['display']];
+                        $parsedAddresses[] = $p['address'];
                     }
                 }
                 return $parsedAddresses;
             }
-            return [$addresses];
+            foreach ($addresses as $address => $name) {
+                return [$address];
+            }
         }
         $parsedAddresses = [];
         foreach (mailparse_rfc822_parse_addresses($addresses) as $p) {
-            $parsedAddresses[] = [$p['address'] => $p['display']];
+            $parsedAddresses[] = $p['address'];
         }
         return $parsedAddresses;
     }
