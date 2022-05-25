@@ -474,6 +474,7 @@ class EmailService
     */
     private function parseAddresses($addresses): array
     {
+        $this->container->get('logger')->debug(__METHOD__, [ 'addresses' => $addresses ]);
         if (empty($addresses)) {
             return [];
         }
@@ -493,7 +494,7 @@ class EmailService
         foreach (mailparse_rfc822_parse_addresses($addresses) as $p) {
             $parsedAddresses[] = [$p['address'] => $p['display']];
         }
-        return $parseAddresses;
+        return $parsedAddresses;
     }
 
     public function processEmailSubject($subject, array $emailPlaceholders = [])
@@ -562,7 +563,9 @@ class EmailService
         }
 
         foreach (['recipient',  'bcc', 'cc'] as $f) {
+            $this->container->get('logger')->debug('before', [ $f => $ff ]);
             $$f = $this->parseAddresses($$f);
+            $this->container->get('logger')->debug('after', [ $f => $ff ]);
         }
 
         // Create a message
