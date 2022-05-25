@@ -2,27 +2,36 @@
 namespace Webkul\UVDesk\CoreFrameworkBundle\Services;
 
 use Doctrine\ORM\EntityManagerInterface;
-use Webkul\UVDesk\CoreFrameworkBundle\Entity\User;
-use Webkul\UVDesk\CoreFrameworkBundle\Entity\Ticket;
-use Webkul\UVDesk\CoreFrameworkBundle\Utils\TokenGenerator;
-use Symfony\Component\HttpFoundation\RequestStack;
-use Webkul\UVDesk\CoreFrameworkBundle\Entity\EmailTemplates;
+use Psr\Log\LoggerInterface;
 use Symfony\Component\DependencyInjection\ContainerInterface;
-use Symfony\Component\Routing\Generator\UrlGeneratorInterface;
+use Symfony\Component\HttpFoundation\RequestStack;
 use Symfony\Component\HttpFoundation\Session\SessionInterface;
+use Symfony\Component\Routing\Generator\UrlGeneratorInterface;
+use Webkul\UVDesk\CoreFrameworkBundle\Entity\EmailTemplates;
+use Webkul\UVDesk\CoreFrameworkBundle\Entity\Ticket;
+use Webkul\UVDesk\CoreFrameworkBundle\Entity\User;
+use Webkul\UVDesk\CoreFrameworkBundle\Utils\TokenGenerator;
 
-class EmailService
+final class EmailService
 {
-    private $request;
     private $container;
     private $entityManager;
+    private $logger;
+    private $request;
     private $session;
 
-    public function __construct(ContainerInterface $container, RequestStack $request, EntityManagerInterface $entityManager, SessionInterface $session)
+    public function __construct(
+        ContainerInterface $container,
+        LoggerInterface $logger,
+        RequestStack $request,
+        EntityManagerInterface $entityManager,
+        SessionInterface $session
+    )
     {
-        $this->request = $request;
         $this->container = $container;
         $this->entityManager = $entityManager;
+        $this->logger = $logger;
+        $this->request = $request;
         $this->session = $session;
     }
 
@@ -474,7 +483,7 @@ class EmailService
     */
     private function parseAddresses($addresses): array
     {
-        $this->container->get('logger')->debug(__METHOD__, [ 'addresses' => $addresses ]);
+        $this->logger->debug(__METHOD__, [ 'addresses' => $addresses ]);
         if (empty($addresses)) {
             return [];
         }
@@ -563,9 +572,9 @@ class EmailService
         }
 
         foreach (['recipient',  'bcc', 'cc'] as $f) {
-            $this->container->get('logger')->debug('before', [ $f => $ff ]);
+            $this->logger->debug('before', [ $f => $ff ]);
             $$f = $this->parseAddresses($$f);
-            $this->container->get('logger')->debug('after', [ $f => $ff ]);
+            $this->logger->debug('after', [ $f => $ff ]);
         }
 
         // Create a message
