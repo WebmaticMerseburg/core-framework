@@ -572,9 +572,9 @@ final class EmailService
         }
 
         foreach (['recipient',  'bcc', 'cc'] as $f) {
-            $this->logger->debug('before', [ $f => $ff ]);
+            $this->logger->debug('before', [ $f => $$f ]);
             $$f = $this->parseAddresses($$f);
-            $this->logger->debug('after', [ $f => $ff ]);
+            $this->logger->debug('after', [ $f => $$f ]);
         }
 
         // Create a message
