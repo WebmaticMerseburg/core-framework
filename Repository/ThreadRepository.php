@@ -28,6 +28,14 @@ class ThreadRepository extends \Doctrine\ORM\EntityRepository
             $subject = str_ireplace("FWD: ","",$subject);
         }
 
+        if (stripos($subject,"AW: ") !== false) {
+            $subject = str_ireplace("AW: ","",$subject);
+        }
+
+        if (stripos($subject,"WG: ") !== false) {
+            $subject = str_ireplace("WG: ","",$subject);
+        }
+
         $ticket = $this->getEntityManager()->createQuery("SELECT t FROM UVDeskCoreFrameworkBundle:Ticket t WHERE t.subject LIKE :referenceIds" )
             ->setParameter('referenceIds', '%' . $subject . '%')
             ->setMaxResults(1)
