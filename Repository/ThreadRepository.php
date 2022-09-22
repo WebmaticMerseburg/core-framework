@@ -7,6 +7,7 @@ use Doctrine\Common\Collections\Criteria;
 use Webkul\UVDesk\CoreFrameworkBundle\Entity\User;
 use Webkul\UVDesk\CoreFrameworkBundle\Entity\Ticket;
 use Webkul\UVDesk\CoreFrameworkBundle\Entity\Attachment;
+use Webkul\UVDesk\CoreFrameworkBundle\Entity\Thread;
 
 /**
  * ThreadRepository
@@ -27,7 +28,7 @@ class ThreadRepository extends \Doctrine\ORM\EntityRepository
         if (stripos($subject,"FWD: ") !== false) {
             $subject = str_ireplace("FWD: ","",$subject);
         }
-
+        
         if (stripos($subject,"AW: ") !== false) {
             $subject = str_ireplace("AW: ","",$subject);
         }
@@ -36,10 +37,16 @@ class ThreadRepository extends \Doctrine\ORM\EntityRepository
             $subject = str_ireplace("WG: ","",$subject);
         }
 
-        $ticket = $this->getEntityManager()->createQuery("SELECT t FROM UVDeskCoreFrameworkBundle:Ticket t WHERE t.subject LIKE :referenceIds" )
-            ->setParameter('referenceIds', '%' . $subject . '%')
+        $entityManager = $this->getEntityManager();
+
+        $queryBuilder = $entityManager->createQueryBuilder()
+            ->select('t')
+            ->from(Ticket::class, 't')
+            ->where('t.subject LIKE :referenceIds')->setParameter('referenceIds', "%$subject%")
             ->setMaxResults(1)
-            ->getOneOrNullResult();
+        ;
+
+        $ticket = $queryBuilder->getQuery()->getOneOrNullResult();
 
         return ($ticket && strtolower($ticket->getCustomer()->getEmail()) == strtolower($email)) ? $ticket : null;
     }
@@ -48,25 +55,27 @@ class ThreadRepository extends \Doctrine\ORM\EntityRepository
     {
         return $this->getEntityManager()->createQueryBuilder()
             ->select("thread")
-            ->from('UVDeskCoreFrameworkBundle:Thread', 'thread')
+            ->from(Thread::class, 'thread')
             ->where('thread.ticket = :ticket')->setParameter('ticket', $ticket)
             ->orderBy('thread.id', Criteria::DESC)
             ->setMaxResults(1)
             ->getQuery()
-            ->getOneOrNullResult();
+            ->getOneOrNullResult()
+        ;
     }
 
     public function prepareBasePaginationRecentThreadsQuery($ticket, array $params, $enabledLockedThreads = true)
     {
         $queryBuilder = $this->getEntityManager()->createQueryBuilder()
             ->select("thread, attachments, user, userInstance")
-            ->from('UVDeskCoreFrameworkBundle:Thread', 'thread')
+            ->from(Thread::class, 'thread')
             ->leftJoin('thread.user', 'user')
             ->leftJoin('user.userInstance', 'userInstance')
             ->leftJoin('thread.attachments', 'attachments')
             ->where('thread.ticket = :ticket')->setParameter('ticket', $ticket)
             ->andWhere('thread.threadType != :disabledThreadType')->setParameter('disabledThreadType', 'create')
-            ->orderBy('thread.id', Criteria::DESC);
+            ->orderBy('thread.id', Criteria::DESC)
+        ;
 
         // Filter locked threads
         if (false === $enabledLockedThreads) {
@@ -171,14 +180,15 @@ class ThreadRepository extends \Doctrine\ORM\EntityRepository
 
     public function findThreadByRefrenceId($referenceIds)
     {
-        $query = $this->getEntityManager()
-            ->createQuery(
-                "SELECT t FROM UVDeskCoreFrameworkBundle:Ticket t
-                WHERE t.referenceIds LIKE :referenceIds
-                ORDER BY t.id DESC"
-            )->setParameter('referenceIds', '%'.$referenceIds.'%');
+        $queryBuilder = $this->getEntityManager()->createQueryBuilder()
+            ->select('t')
+            ->from(Ticket::class, 't')
+            ->where('t.referenceIds = :referenceIds')->setParameter('referenceIds', "%$referenceIds%")
+            ->orderBy('t.id', 'DESC')
+            ->setMaxResults(1)
+        ;
 
-        return $query->setMaxResults(1)->getOneOrNullResult();
+        return $queryBuilder->getQuery()->getOneOrNullResult();
     }
 
 }

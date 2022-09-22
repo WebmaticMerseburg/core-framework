@@ -9,6 +9,8 @@ use Symfony\Component\HttpFoundation\Request;
 use Webkul\UVDesk\CoreFrameworkBundle\Services\ValidationService;
 use Webkul\UVDesk\CoreFrameworkBundle\Services\UserService;
 use Webkul\UVDesk\CoreFrameworkBundle\Entity\Ticket;
+use Webkul\UVDesk\CoreFrameworkBundle\Entity\TicketType;
+use UVDesk\CommunityPackages\UVDesk\FormComponent\Entity as CommunityPackageEntities;
 
 class CustomFieldsService {
 
@@ -66,7 +68,7 @@ class CustomFieldsService {
                     $customField['validation']['required'] = $customField['required'];
                     $customField['validation']['fieldtype'] = $customField['fieldType'] ? : $customField['validation']['fieldtype'] ;
                     if(count($customField['customFieldsDependency'])) {
-                        $ticketType = $this->entityManager->getRepository('UVDeskCoreFrameworkBundle:TicketType')->findOneById(isset($data['type']) ? $data['type'] : '' );
+                        $ticketType = $this->entityManager->getRepository(TicketType::class)->findOneById(isset($data['type']) ? $data['type'] : '' );
                         if($ticketType) {
                             $typeId = $ticketType->getId();
                             $flag = 0;
@@ -117,7 +119,7 @@ class CustomFieldsService {
                     $customFieldValue = isset($data['customFields'][$customField['id']]) ? $data['customFields'][$customField['id']] : null;
                 }
                 if(count($customField['customFieldsDependency'])) {
-                    $ticketType = $this->entityManager->getRepository('UVDeskCoreFrameworkBundle:TicketType')->findOneById(isset($data['type']) ? $data['type'] : '' );
+                    $ticketType = $this->entityManager->getRepository(TicketType::class)->findOneById(isset($data['type']) ? $data['type'] : '' );
                     if($ticketType) {
                         $typeId = $ticketType->getId();
                         $flag = 0;
@@ -175,7 +177,7 @@ class CustomFieldsService {
                 $customField['validation']['required'] = $customField['required'];
                 $customField['validation']['fieldtype'] = $customField['fieldType'] ? : $customField['validation']['fieldtype'];
                 if(count($customField['customFieldsDependency'])) {
-                    $ticketType = $this->entityManager->getRepository('UVDeskCoreFrameworkBundle:TicketType')->findOneById(isset($data['type']) ? $data['type'] : '' );
+                    $ticketType = $this->entityManager->getRepository(TicketType::class)->findOneById(isset($data['type']) ? $data['type'] : '' );
                     if($ticketType) {
                         $typeId = $ticketType->getId();
                         $flag = 0;
@@ -230,7 +232,7 @@ class CustomFieldsService {
                 }
 
                 if(count($customField['dependency'])) {
-                    $ticketType = $this->entityManager->getRepository('UVDeskCoreFrameworkBundle:TicketType')->findOneById(isset($data['type']) ? $data['type'] : '' );
+                    $ticketType = $this->entityManager->getRepository(TicketType::class)->findOneById(isset($data['type']) ? $data['type'] : '' );
                     if($ticketType) {
                         $typeId = $ticketType->getId();
                         $flag = 0;
@@ -268,7 +270,7 @@ class CustomFieldsService {
             throw new \Exception('getCustomFieldsArray() expects parameter 1 to be string.');
         }
         $qb = $this->entityManager->createQueryBuilder()
-        			->from('UVDeskFormComponentPackage:CustomFields', 'c')
+        			->from(CommunityPackageEntities\CustomFields::class, 'c')
                     ->leftJoin("c.customFieldsDependency",'cfd')
         			->select('c,cfv,cfd')
                     ->leftJoin("c.customFieldValues",'cfv')
@@ -304,7 +306,7 @@ class CustomFieldsService {
         }
 
         $queryBuilder = $this->entityManager->createQueryBuilder()
-                            ->from('UVDeskFormComponentPackage:CustomFields', 's')
+                            ->from(CommunityPackageEntities\CustomFields::class, 's')
                             ->leftJoin("s.customFieldValues",'cfv')
                             ->leftJoin('s.customFieldsDependency','cfd')
                             ->select('s, cfv, cfd')
@@ -384,7 +386,7 @@ class CustomFieldsService {
 		
         if (!empty($customFieldCollection)) {
 	        $ticketCustomFieldArrayCollection = [];
-	        $ticketCustomFieldCollection = $this->entityManager->getRepository('UVDeskFormComponentPackage:TicketCustomFieldsValues')->findBy(['ticket' => $ticket]);
+	        $ticketCustomFieldCollection = $this->entityManager->getRepository(CommunityPackageEntities\TicketCustomFieldsValues::class)->findBy(['ticket' => $ticket]);
 
 	        if (!empty($ticketCustomFieldCollection)) {
 	        	foreach ($ticketCustomFieldCollection as $ticketCustomField) {
@@ -458,7 +460,7 @@ class CustomFieldsService {
 	{   
         $customFieldCollection = $this->getCustomFieldsArray('customer');
 		$ticketCustomFieldArrayCollection = [];
-		$ticketCustomFieldCollection = $this->entityManager->getRepository('UVDeskFormComponentPackage:TicketCustomFieldsValues')->findBy(['ticket' => $ticket]);
+		$ticketCustomFieldCollection = $this->entityManager->getRepository(CommunityPackageEntities\TicketCustomFieldsValues::class)->findBy(['ticket' => $ticket]);
 
 		/* load custom fields whose value is already present in ticket */ 
 		$existingCfIds = array_column($customFieldCollection, 'id');
