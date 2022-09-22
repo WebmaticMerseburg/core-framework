@@ -8,22 +8,31 @@ use Webkul\UVDesk\CoreFrameworkBundle\Entity\Website;
 use Webkul\UVDesk\CoreFrameworkBundle\Utils\TokenGenerator;
 use Symfony\Component\HttpFoundation\RequestStack;
 use Webkul\UVDesk\CoreFrameworkBundle\Entity\EmailTemplates;
+use Psr\Log\LoggerInterface;
 use Symfony\Component\DependencyInjection\ContainerInterface;
-use Symfony\Component\Routing\Generator\UrlGeneratorInterface;
 use Symfony\Component\HttpFoundation\Session\SessionInterface;
+use Symfony\Component\Routing\Generator\UrlGeneratorInterface;
 
-class EmailService
+final class EmailService
 {
-    private $request;
     private $container;
     private $entityManager;
+    private $logger;
+    private $request;
     private $session;
 
-    public function __construct(ContainerInterface $container, RequestStack $request, EntityManagerInterface $entityManager, SessionInterface $session)
+    public function __construct(
+        ContainerInterface $container,
+        LoggerInterface $logger,
+        RequestStack $request,
+        EntityManagerInterface $entityManager,
+        SessionInterface $session
+    )
     {
-        $this->request = $request;
         $this->container = $container;
         $this->entityManager = $entityManager;
+        $this->logger = $logger;
+        $this->request = $request;
         $this->session = $session;
     }
 
@@ -344,7 +353,7 @@ class EmailService
         if (!empty($helpdeskKnowledgebaseWebsite) && null != $helpdeskKnowledgebaseWebsite->getLogo()) {
             $companyLogoURL = sprintf('http://%s%s', $this->container->getParameter('uvdesk.site_url'), $helpdeskKnowledgebaseWebsite->getLogo());
         }
-        
+
         // Link to update account login credentials
         $updateCredentialsURL = $router->generate( 'helpdesk_update_account_credentials', [
             'email' => $user->getEmail(),
@@ -361,7 +370,7 @@ class EmailService
             'global.companyLogo' => "<img style='max-height:60px' src='$companyLogoURL'/>",
             'global.companyUrl' => "<a href='$companyURL'>$companyURL</a>",
         ];
-        
+
         return $placeholderParams;
     }
 
@@ -370,8 +379,9 @@ class EmailService
         $supportTeam = $ticket->getSupportTeam();
         $supportGroup = $ticket->getSupportGroup();
         $supportTags = array_map(function ($supportTag) { return $supportTag->getName(); }, $ticket->getSupportTags()->toArray());
-        
+
         $router = $this->container->get('router');
+
         $helpdeskWebsite = $this->entityManager->getRepository(Website::class)->findOneByCode('helpdesk');
         
         // Resolve path to helpdesk brand image
@@ -381,7 +391,7 @@ class EmailService
         if (!empty($helpdeskKnowledgebaseWebsite) && null != $helpdeskKnowledgebaseWebsite->getLogo()) {
             $companyLogoURL = sprintf('http://%s%s', $this->container->getParameter('uvdesk.site_url'), $helpdeskKnowledgebaseWebsite->getLogo());
         }
-        
+
         // Link to company knowledgebase
         if (false == array_key_exists('UVDeskSupportCenterBundle', $this->container->getParameter('kernel.bundles'))) {
             $companyURL = $this->container->getParameter('uvdesk.site_url');
@@ -402,7 +412,7 @@ class EmailService
                 $viewTicketURL = $router->generate('helpdesk_customer_ticket', [
                     'id' => $ticket->getId(),
                 ], UrlGeneratorInterface::ABSOLUTE_URL);
-    
+
                 $generateTicketURLCustomer = $router->generate('helpdesk_customer_create_ticket', [], UrlGeneratorInterface::ABSOLUTE_URL);
         } else {
             $viewTicketURL = '';
@@ -448,7 +458,7 @@ class EmailService
             return  preg_replace("/<img[^>]+\>/i", "", $ticket->currentThread->getMessage());
         } else {
             $messages = $ticket->getThreads();
-            for ($i = count($messages) - 1 ; $i >= 0  ; $i--) { 
+            for ($i = count($messages) - 1 ; $i >= 0  ; $i--) {
                 if (isset($messages[$i]) && $messages[$i]->getThreadType() != "note") {
                     return preg_replace("/<img[^>]+\>/i", "", $messages[$i]->getMessage());
                 }
@@ -459,12 +469,53 @@ class EmailService
     }
 
 
+    private function isNumericArray(array $array): bool
+    {
+        foreach ($array as $i => $v) {
+            if (!is_int($i)) {
+                return false;
+            }
+        }
+
+        return true;
+    }
+
+    /**
+    * @var string|array
+    */
+    private function parseAddresses($addresses): array
+    {
+        $this->logger->debug(__METHOD__, [ 'addresses' => $addresses ]);
+        if (empty($addresses)) {
+            return [];
+        }
+        if (is_array($addresses)) {
+            if ($this->isNumericArray($addresses)) {
+                $parsedAddresses = [];
+                foreach ($addresses as $a) {
+                    foreach(mailparse_rfc822_parse_addresses($a) as $p) {
+                        $parsedAddresses[] = $p['address'];
+                    }
+                }
+                return $parsedAddresses;
+            }
+            foreach ($addresses as $address => $name) {
+                return [$address];
+            }
+        }
+        $parsedAddresses = [];
+        foreach (mailparse_rfc822_parse_addresses($addresses) as $p) {
+            $parsedAddresses[] = $p['address'];
+        }
+        return $parsedAddresses;
+    }
+
     public function processEmailSubject($subject, array $emailPlaceholders = [])
     {
         foreach ($emailPlaceholders as $var => $value) {
             $subject = strtr($subject, ["{%$var%}" => $value, "{% $var %}" => $value]);
         }
-        
+
         return $subject;
     }
 
@@ -497,7 +548,7 @@ class EmailService
                 // Send email on behalf of configured mailbox
                 try {
                     $mailbox = $this->container->get('uvdesk.mailbox')->getMailboxByEmail($mailboxEmail);
-    
+
                     if (true === $mailbox['enabled']) {
                         $supportEmail = $mailbox['email'];
                         $supportEmailName = $mailbox['name'];
@@ -524,6 +575,12 @@ class EmailService
             return;
         }
 
+        foreach (['recipient',  'bcc', 'cc'] as $f) {
+            $this->logger->debug('before', [ $f => $$f ]);
+            $$f = $this->parseAddresses($$f);
+            $this->logger->debug('after', [ $f => $$f ]);
+        }
+
         // Create a message
         $message = (new \Swift_Message($subject))
             ->setFrom([$supportEmail => $supportEmailName])
@@ -536,9 +593,9 @@ class EmailService
         foreach ($attachments as $attachment) {
             if (!empty($attachment['path']) && !empty($attachment['name'])) {
                 $message->attach(\Swift_Attachment::fromPath($attachment['path'])->setFilename($attachment['name']));
-                
+
                 continue;
-            } 
+            }
 
             $message->attach(\Swift_Attachment::fromPath($attachment));
         }
@@ -554,7 +611,7 @@ class EmailService
         try {
             $messageId = $message->getId();
             $mailer->send($message);
-            
+
             return "<$messageId>";
         } catch (\Exception $e) {
             $error_check = true;
@@ -562,7 +619,7 @@ class EmailService
         }
 
         if ($error_check == true) {
-            $this->session->getFlashBag()->add('warning', $this->container->get('translator')->trans('Warning ! Swiftmailer not working. An error has occurred while sending emails!'));   
+            $this->session->getFlashBag()->add('warning', $this->container->get('translator')->trans('Warning ! Swiftmailer not working. An error has occurred while sending emails!'));
         }
 
         return null;
@@ -581,9 +638,9 @@ class EmailService
         if($ticket->lastCollaborator != null) {
             $name =  $ticket->lastCollaborator->getFirstName()." ".$ticket->lastCollaborator->getLastName();
         }
-        
+
         return $name != null ? $name : '';
-        
+
     }
 
     public function getCollaboratorEmail($ticket)
@@ -599,7 +656,7 @@ class EmailService
         if($ticket->lastCollaborator != null) {
             $email = $ticket->lastCollaborator->getEmail();
         }
-        
+
         return $email != null ? $email : '';;
     }
 }

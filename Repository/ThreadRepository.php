@@ -28,6 +28,14 @@ class ThreadRepository extends \Doctrine\ORM\EntityRepository
         if (stripos($subject,"FWD: ") !== false) {
             $subject = str_ireplace("FWD: ","",$subject);
         }
+        
+        if (stripos($subject,"AW: ") !== false) {
+            $subject = str_ireplace("AW: ","",$subject);
+        }
+
+        if (stripos($subject,"WG: ") !== false) {
+            $subject = str_ireplace("WG: ","",$subject);
+        }
 
         $entityManager = $this->getEntityManager();
 
